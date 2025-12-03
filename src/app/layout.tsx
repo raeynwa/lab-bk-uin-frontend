@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import { Suspense } from "react"; // 1. Import Suspense
+import { Suspense } from "react";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner"
 import { AuthToastListener } from "@/components/auth-toast-listener"
+import { ThemeProvider } from "@/components/theme-provider"
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -18,16 +19,25 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        {children}
+        {/* Bungkus aplikasi dengan ThemeProvider untuk support Dark Mode */}
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {children}
 
-        {/* 2. WRAP DENGAN SUSPENSE: Wajib untuk useSearchParams */}
-        <Suspense fallback={null}>
-          <AuthToastListener />
-        </Suspense>
+          {/* Suspense wajib digunakan karena AuthToastListener menggunakan useSearchParams */}
+          <Suspense fallback={null}>
+            <AuthToastListener />
+          </Suspense>
 
-        <Toaster />
+          {/* Toaster dari Sonner untuk notifikasi alert */}
+          <Toaster />
+        </ThemeProvider>
       </body>
     </html>
   );

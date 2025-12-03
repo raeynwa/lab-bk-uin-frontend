@@ -13,18 +13,16 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { logoutAction } from '@/app/actions/auth'
+import { ModeToggle } from "@/components/mode-toggle" // Import Toggle
 
-// Pastikan menggunakan 'async' karena cookies() bersifat asynchronous di Next.js terbaru
 export default async function DashboardLayout({
     children,
 }: {
     children: React.ReactNode
 }) {
-    // Gunakan 'await' saat memanggil cookies()
     const cookieStore = await cookies()
     const userInfoCookie = cookieStore.get('user_info')
 
-    // Parsing JSON user info (fallback ke default jika kosong/error)
     let user = { nama_user: 'Guest', email: '' }
     try {
         if (userInfoCookie) {
@@ -71,7 +69,6 @@ export default async function DashboardLayout({
                 {/* HEADER / NAVBAR */}
                 <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6">
 
-                    {/* Mobile Sidebar Trigger */}
                     <Sheet>
                         <SheetTrigger asChild>
                             <Button variant="outline" size="icon" className="shrink-0 md:hidden">
@@ -94,10 +91,11 @@ export default async function DashboardLayout({
                     </Sheet>
 
                     <div className="w-full flex-1">
-                        {/* Space kosong di tengah navbar */}
                     </div>
 
-                    {/* User Profile & Logout */}
+                    {/* Tambahkan ModeToggle di sini (sebelah profil) */}
+                    <ModeToggle />
+
                     <div className="flex items-center gap-2">
                         <span className="text-sm font-medium hidden md:block">{user.nama_user}</span>
                         <DropdownMenu>
@@ -111,7 +109,6 @@ export default async function DashboardLayout({
                                 <DropdownMenuLabel>{user.email}</DropdownMenuLabel>
                                 <DropdownMenuSeparator />
 
-                                {/* LOGOUT BUTTON (Server Action) */}
                                 <form action={logoutAction}>
                                     <button className="w-full text-left cursor-default">
                                         <DropdownMenuItem className="cursor-pointer text-red-600 focus:text-red-600">
@@ -125,7 +122,6 @@ export default async function DashboardLayout({
                     </div>
                 </header>
 
-                {/* PAGE CONTENT */}
                 <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6">
                     {children}
                 </main>
