@@ -2,12 +2,15 @@ import { LoginForm } from "@/components/login-form"
 
 export default function LoginPage() {
     return (
-        // Tambahkan class "dark" di sini untuk memaksa tema gelap pada halaman login
-        // Tambahkan bg-background agar warna background hitam ter-apply dan text-foreground agar teks terbaca
-        <div className="dark">
-            <div className="flex min-h-screen w-full items-center justify-center bg-background p-4 text-foreground">
-                <LoginForm />
-            </div>
+        // Wrapper utama dengan background gradient sesuai request
+        <div className="relative flex min-h-screen w-full items-center justify-center overflow-hidden bg-background px-4">
+
+            {/* Background Decorator (Gradient) */}
+            <div className="absolute inset-0 -z-10 h-full w-full bg-background [background:radial-gradient(125%_125%_at_50%_10%,var(--background)_40%,var(--primary)_100%)] opacity-20 dark:opacity-10"></div>
+
+            {/* Form Component */}
+            <LoginForm />
+
         </div>
     )
 }
