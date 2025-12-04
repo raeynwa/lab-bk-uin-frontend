@@ -113,6 +113,7 @@ export function LoginForm() {
 
                         {/* Input Password */}
                         <div className="space-y-2">
+                            <Label htmlFor="password">Password</Label>
                             <div className="relative">
                                 <div className="absolute left-3 top-2.5 h-4 w-4 flex items-center justify-center pointer-events-none">
                                     <Lock className="w-4 h-4 text-muted-foreground" />

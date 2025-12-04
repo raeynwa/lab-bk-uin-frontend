@@ -12,7 +12,15 @@ export default async function DashboardLayout({
     const cookieStore = await cookies()
     const userInfoCookie = cookieStore.get('user_info')
 
-    let user = { nama_user: 'Guest', email: '' }
+    // Default user jika cookie kosong (untuk mencegah error)
+    let user = {
+        id_user: '',
+        nama_user: 'Guest',
+        email: '',
+        role_level: 0, // Default 0 (tidak punya akses menu)
+        role_name: 'Guest'
+    }
+
     try {
         if (userInfoCookie) {
             user = JSON.parse(userInfoCookie.value)
@@ -24,8 +32,8 @@ export default async function DashboardLayout({
     return (
         <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
 
-            {/* 2. Panggil Komponen Sidebar */}
-            <DashboardSidebar />
+            {/* 2. UPDATE: Oper data user ke Sidebar agar menu dinamis */}
+            <DashboardSidebar user={user} />
 
             <div className="flex flex-col h-full max-h-screen overflow-hidden">
 
@@ -33,7 +41,7 @@ export default async function DashboardLayout({
                 <DashboardHeader user={user} />
 
                 {/* 4. Area Konten Utama (Scrollable) */}
-                <main className="flex-1 overflow-y-auto p-4 lg:p-6">
+                <main className="flex-1 overflow-y-auto p-4 lg:p-6 bg-muted/20">
                     {children}
                 </main>
 

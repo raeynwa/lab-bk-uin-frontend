@@ -1,3 +1,5 @@
+'use client' // Tambahkan ini agar komponen stabil menangani interaksi
+
 import Link from "next/link"
 import { CircleUser, Home, Menu, Package2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -22,7 +24,7 @@ interface DashboardHeaderProps {
 
 export function DashboardHeader({ user }: DashboardHeaderProps) {
     return (
-        <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6">
+        <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6 sticky top-0 bg-background z-20">
 
             {/* Mobile Sidebar Trigger */}
             <Sheet>
@@ -50,13 +52,13 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
             </Sheet>
 
             <div className="w-full flex-1">
-                {/* Search bar bisa diletakkan di sini */}
+                {/* Area Search Bar (jika diperlukan) */}
             </div>
 
-            {/* Tombol Ganti Tema */}
+            {/* Tombol Ganti Tema (Dark/Light) */}
             <ModeToggle />
 
-            {/* User Profile & Logout */}
+            {/* User Profile & Logout Dropdown */}
             <div className="flex items-center gap-2">
                 <span className="text-sm font-medium hidden md:block">
                     {user.nama_user}
@@ -75,13 +77,13 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
                         <DropdownMenuItem>Support</DropdownMenuItem>
                         <DropdownMenuSeparator />
 
-                        <form action={logoutAction}>
-                            <button className="w-full text-left cursor-default">
-                                <DropdownMenuItem className="cursor-pointer text-red-600 focus:text-red-600">
-                                    Logout
-                                </DropdownMenuItem>
-                            </button>
-                        </form>
+                        {/* Tombol Logout Stabil: Menggunakan onSelect/onClick langsung */}
+                        <DropdownMenuItem
+                            className="text-red-600 focus:text-red-600 cursor-pointer"
+                            onSelect={() => logoutAction()}
+                        >
+                            Logout
+                        </DropdownMenuItem>
 
                     </DropdownMenuContent>
                 </DropdownMenu>
