@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { Suspense } from "react";
 import "./globals.css";
+import "./table-styles.css";
 import { Toaster } from "@/components/ui/sonner"
 import { AuthToastListener } from "@/components/auth-toast-listener"
 import { ThemeProvider } from "@/components/theme-provider"
