@@ -225,10 +225,10 @@ export default function SemesterPage() {
                         )}
                     </button>
 
-                    <button className="hidden sm:flex items-center gap-2 h-8 px-3 bg-secondary text-secondary-foreground rounded-md hover:opacity-90 transition-all text-xs font-medium border border-border">
+                    {/* <button className="hidden sm:flex items-center gap-2 h-8 px-3 bg-secondary text-secondary-foreground rounded-md hover:opacity-90 transition-all text-xs font-medium border border-border">
                         <Download className="w-3.5 h-3.5" />
                         Export
-                    </button>
+                    </button> */}
 
                     {dataMode === 1 && (
                         <button
@@ -260,14 +260,14 @@ export default function SemesterPage() {
                         />
                     </div>
                     <div className="flex gap-2 w-full sm:w-auto">
-                        <button className="flex-1 sm:flex-none flex items-center justify-center gap-2 h-8 px-3 bg-background border border-input rounded-md text-xs font-medium hover:bg-accent text-muted-foreground hover:text-foreground transition-colors">
+                        {/* <button className="flex-1 sm:flex-none flex items-center justify-center gap-2 h-8 px-3 bg-background border border-input rounded-md text-xs font-medium hover:bg-accent text-muted-foreground hover:text-foreground transition-colors">
                             <Filter className="w-3.5 h-3.5" />
                             Filter
                         </button>
                         <button className="flex-1 sm:flex-none flex items-center justify-center gap-2 h-8 px-3 bg-background border border-input rounded-md text-xs font-medium hover:bg-accent text-muted-foreground hover:text-foreground transition-colors">
                             <MoreVertical className="w-3.5 h-3.5" />
                             View
-                        </button>
+                        </button> */}
                     </div>
                 </div>
 
