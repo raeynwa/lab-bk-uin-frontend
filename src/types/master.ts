@@ -3,12 +3,30 @@ export interface TahunAjaran {
     tahun_ajaran: string
     periode_awal: string
     periode_akhir: string
-    sts_aktif: string // "0" atau "1"
+    sts_aktif: string // "1" | "2"
     sts_hapus: string
     created_by?: string
     updated_by?: string
     created_at?: string
     updated_at?: string
+}
+
+// Interface Baru untuk Semester
+export interface Semester {
+    id_semester: string
+    id_tahun_ajaran_fr: string
+    semester: string
+    periode_awal: string
+    periode_akhir: string
+    sts_aktif: string
+    sts_hapus: string
+    created_by?: string
+    updated_by?: string
+    created_at?: string
+    updated_at?: string
+    // Field tambahan dari join/relation dengan tahun ajaran
+    id_tahun_ajaran?: string
+    tahun_ajaran?: string
 }
 
 export interface ApiResponse<T> {

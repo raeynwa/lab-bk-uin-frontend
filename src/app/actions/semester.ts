@@ -2,16 +2,16 @@
 
 import { revalidatePath } from 'next/cache'
 import { fetchAPI } from '@/lib/api-service'
-import { ApiResponse, TahunAjaran } from '@/types/master'
+import { ApiResponse, Semester } from '@/types/master'
 
 const isRedirectError = (error: any) => {
     return error.message === 'NEXT_REDIRECT' || error.digest?.startsWith('NEXT_REDIRECT')
 }
 
-// 1. GET ALL PAGINATED (Index)
-export async function getTahunAjaran(page = 1, search = '', status = 1): Promise<ApiResponse<TahunAjaran> | { error: string }> {
+// 1. GET ALL (Index)
+export async function getSemester(page = 1, search = '', status = 1): Promise<ApiResponse<Semester> | { error: string }> {
     try {
-        const res = await fetchAPI(`/auth/tahun-ajaran/index?page=${page}&search=${search}&status=${status}`, {
+        const res = await fetchAPI(`/auth/semester/index?page=${page}&search=${search}&status=${status}`, {
             method: 'GET',
             cache: 'no-store'
         })
@@ -25,35 +25,18 @@ export async function getTahunAjaran(page = 1, search = '', status = 1): Promise
     }
 }
 
-// --- FUNGSI BARU: GET ALL LIST (Untuk Dropdown) ---
-export async function getAllTahunAjaran(): Promise<TahunAjaran[] | []> {
-    try {
-        const res = await fetchAPI(`/auth/tahun-ajaran/get`, {
-            method: 'GET',
-            cache: 'no-store'
-        })
-
-        if (!res.ok) return []
-
-        // Asumsi responnya langsung array atau { data: [] }
-        const json = await res.json()
-        return Array.isArray(json) ? json : (json.data || [])
-    } catch (error) {
-        return []
-    }
-}
-
 // 2. STORE
-export async function createTahunAjaran(prevState: any, formData: FormData) {
+export async function createSemester(prevState: any, formData: FormData) {
     try {
         const payload = {
-            tahun_ajaran: formData.get('tahun_ajaran'),
+            id_tahun_ajaran_fr: formData.get('id_tahun_ajaran_fr'),
+            semester: formData.get('semester'),
             periode_awal: formData.get('periode_awal'),
             periode_akhir: formData.get('periode_akhir'),
             sts_aktif: formData.get('sts_aktif') === 'on' ? '1' : '2'
         }
 
-        const res = await fetchAPI(`/auth/tahun-ajaran/store`, {
+        const res = await fetchAPI(`/auth/semester/store`, {
             method: 'POST',
             body: JSON.stringify(payload)
         })
@@ -64,7 +47,7 @@ export async function createTahunAjaran(prevState: any, formData: FormData) {
             return { error: data.message || 'Gagal menyimpan data' }
         }
 
-        revalidatePath('/master/tahun-ajaran')
+        revalidatePath('/master/semester')
         return { success: true, message: 'Data berhasil disimpan' }
 
     } catch (error: any) {
@@ -74,16 +57,18 @@ export async function createTahunAjaran(prevState: any, formData: FormData) {
 }
 
 // 3. UPDATE
-export async function updateTahunAjaran(id: string, prevState: any, formData: FormData) {
+export async function updateSemester(id: string, prevState: any, formData: FormData) {
     try {
         const payload = {
-            tahun_ajaran: formData.get('tahun_ajaran'),
+            id_tahun_ajaran_fr: formData.get('id_tahun_ajaran_fr'),
+            semester: formData.get('semester'),
             periode_awal: formData.get('periode_awal'),
             periode_akhir: formData.get('periode_akhir'),
             sts_aktif: formData.get('sts_aktif') === 'on' ? '1' : '2'
         }
 
-        const res = await fetchAPI(`/auth/tahun-ajaran/update/${id}`, {
+        // Menggunakan POST sesuai route yang Anda berikan untuk update
+        const res = await fetchAPI(`/auth/semester/update/${id}`, {
             method: 'POST',
             body: JSON.stringify(payload)
         })
@@ -94,7 +79,7 @@ export async function updateTahunAjaran(id: string, prevState: any, formData: Fo
             return { error: data.message || 'Gagal memperbarui data' }
         }
 
-        revalidatePath('/master/tahun-ajaran')
+        revalidatePath('/master/semester')
         return { success: true, message: 'Data berhasil diperbarui' }
 
     } catch (error: any) {
@@ -104,15 +89,16 @@ export async function updateTahunAjaran(id: string, prevState: any, formData: Fo
 }
 
 // 4. SOFT DELETE
-export async function softDeleteTahunAjaran(id: string) {
+export async function softDeleteSemester(id: string) {
     try {
-        const res = await fetchAPI(`/auth/tahun-ajaran/soft-delete/${id}`, {
-            method: 'DELETE'
+        // Sesuai prompt: Route::post('soft-delete/{id}')
+        const res = await fetchAPI(`/auth/semester/soft-delete/${id}`, {
+            method: 'POST'
         })
 
         if (!res.ok) return { error: 'Gagal menghapus data' }
 
-        revalidatePath('/master/tahun-ajaran')
+        revalidatePath('/master/semester')
         return { success: true }
 
     } catch (error: any) {
@@ -122,15 +108,15 @@ export async function softDeleteTahunAjaran(id: string) {
 }
 
 // 5. HARD DELETE
-export async function hardDeleteTahunAjaran(id: string) {
+export async function hardDeleteSemester(id: string) {
     try {
-        const res = await fetchAPI(`/auth/tahun-ajaran/hard-delete/${id}`, {
+        const res = await fetchAPI(`/auth/semester/hard-delete/${id}`, {
             method: 'DELETE'
         })
 
         if (!res.ok) return { error: 'Gagal menghapus permanen' }
 
-        revalidatePath('/master/tahun-ajaran')
+        revalidatePath('/master/semester')
         return { success: true }
 
     } catch (error: any) {
@@ -139,16 +125,16 @@ export async function hardDeleteTahunAjaran(id: string) {
     }
 }
 
-// 6. RESTORE (Fungsi Baru)
-export async function restoreTahunAjaran(id: string) {
+// 6. RESTORE
+export async function restoreSemester(id: string) {
     try {
-        const res = await fetchAPI(`/auth/tahun-ajaran/restore/${id}`, {
+        const res = await fetchAPI(`/auth/semester/restore/${id}`, {
             method: 'POST'
         })
 
         if (!res.ok) return { error: 'Gagal mengembalikan data' }
 
-        revalidatePath('/master/tahun-ajaran')
+        revalidatePath('/master/semester')
         return { success: true }
 
     } catch (error: any) {
