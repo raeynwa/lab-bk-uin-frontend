@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
     Package2,
     Home,
@@ -49,7 +49,7 @@ export function DashboardSidebar({ user }: SidebarProps) {
     const pathname = usePathname();
     const role = user.role_level;
 
-    // Konfigurasi Menu Berdasarkan Gambar
+    // Konfigurasi Menu
     const MENU_DATA: MenuCategory[] = [
         {
             category: "Dashboard",
@@ -80,7 +80,7 @@ export function DashboardSidebar({ user }: SidebarProps) {
                 {
                     title: "VAK",
                     icon: Brain,
-                    roles: [1, 2, 3], // Asumsi level 3 juga bisa lihat master data VAK (sesuai gambar)
+                    roles: [1, 2, 3],
                     submenu: [
                         { title: "Result Master", href: "/psikotest/vak/result", roles: [1, 2, 3] },
                         { title: "Soal VAK", href: "/psikotest/vak/soal", roles: [1, 2, 3] },
@@ -128,7 +128,7 @@ export function DashboardSidebar({ user }: SidebarProps) {
             category: "Penjadwalan & Test",
             items: [
                 { title: "Penjadwalan Test", href: "/jadwal", icon: CalendarDays, roles: [1, 2, 3, 4] },
-                { title: "Mulai Test", href: "/test/start", icon: ClipboardList, roles: [4] }, // Khusus Siswa
+                { title: "Mulai Test", href: "/test/start", icon: ClipboardList, roles: [4] },
             ]
         },
         {
@@ -146,16 +146,18 @@ export function DashboardSidebar({ user }: SidebarProps) {
             items: [
                 { title: "Role", href: "/settings/role", icon: Settings, roles: [1, 2] },
                 { title: "Users", href: "/settings/users", icon: Users, roles: [1, 2] },
-                { title: "Web Service", href: "/settings/web-service", icon: Database, roles: [1] }, // Super Admin Only
-                { title: "Logs", href: "/settings/logs", icon: FileText, roles: [1] }, // Super Admin Only
+                { title: "Web Service", href: "/settings/web-service", icon: Database, roles: [1] },
+                { title: "Logs", href: "/settings/logs", icon: FileText, roles: [1] },
             ]
         }
     ];
 
     return (
-        <div className="hidden border-r bg-muted/40 md:block overflow-y-auto">
+        // Update: Menggunakan bg-sidebar dan border-sidebar-border
+        <div className="hidden border-r border-sidebar-border bg-sidebar md:block overflow-y-auto">
             <div className="flex h-full max-h-screen flex-col gap-2">
-                <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6 sticky top-0 bg-background z-10">
+                {/* Header Sidebar */}
+                <div className="flex h-14 items-center border-b border-sidebar-border px-4 lg:h-[60px] lg:px-6 sticky top-0 bg-sidebar z-10 text-sidebar-foreground">
                     <Link href="/" className="flex items-center gap-2 font-semibold">
                         <Package2 className="h-6 w-6" />
                         <span className="">Dashboard App</span>
@@ -165,22 +167,17 @@ export function DashboardSidebar({ user }: SidebarProps) {
                 <div className="flex-1 py-4">
                     <nav className="grid items-start px-2 text-sm font-medium lg:px-4 gap-4">
                         {MENU_DATA.map((section, index) => {
-                            // Filter item berdasarkan role
                             const filteredItems = section.items.filter(item => item.roles.includes(role));
-
-                            // Jika kategori tidak memiliki item yang diizinkan, jangan render kategori ini
                             if (filteredItems.length === 0) return null;
 
                             return (
                                 <div key={index} className="space-y-1">
-                                    {/* Judul Kategori (Kecuali Dashboard) */}
                                     {section.category !== "Dashboard" && (
-                                        <h4 className="mb-2 px-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                        <h4 className="mb-2 px-2 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/70">
                                             {section.category}
                                         </h4>
                                     )}
 
-                                    {/* Render Items */}
                                     {filteredItems.map((item, i) => (
                                         <SidebarMenuItem key={i} item={item} pathname={pathname} role={role} />
                                     ))}
@@ -194,16 +191,21 @@ export function DashboardSidebar({ user }: SidebarProps) {
     )
 }
 
-// Komponen Kecil untuk Menangani Menu Item (Single Link atau Submenu)
 function SidebarMenuItem({ item, pathname, role }: { item: MenuItem, pathname: string, role: number }) {
     const [isOpen, setIsOpen] = useState(false);
     const Icon = item.icon || Package2;
 
-    // Cek apakah item ini punya submenu yang valid untuk role ini
     const validSubmenu = item.submenu?.filter(sub => sub.roles.includes(role));
     const hasSubmenu = validSubmenu && validSubmenu.length > 0;
 
-    // Jika tidak punya submenu, render link biasa
+    // Auto expand jika salah satu submenu aktif
+    useEffect(() => {
+        if (hasSubmenu) {
+            const isSubActive = validSubmenu.some(sub => pathname === sub.href);
+            if (isSubActive) setIsOpen(true);
+        }
+    }, [pathname, hasSubmenu, validSubmenu]);
+
     if (!hasSubmenu) {
         if (!item.href) return null;
         const isActive = pathname === item.href;
@@ -212,8 +214,12 @@ function SidebarMenuItem({ item, pathname, role }: { item: MenuItem, pathname: s
             <Link
                 href={item.href}
                 className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary",
-                    isActive ? "bg-muted text-primary" : "text-muted-foreground"
+                    "flex items-center gap-3 rounded-md px-3 py-2 transition-all outline-none ring-sidebar-ring focus-visible:ring-2",
+                    isActive
+                        // STYLE AKTIF BARU: Background Primary Sidebar & Text Primary Foreground
+                        ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm hover:bg-sidebar-primary/90"
+                        // STYLE NON-AKTIF: Text Sidebar Foreground & Hover Accent
+                        : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                 )}
             >
                 <Icon className="h-4 w-4" />
@@ -222,14 +228,14 @@ function SidebarMenuItem({ item, pathname, role }: { item: MenuItem, pathname: s
         );
     }
 
-    // Jika punya submenu, render Collapsible
     return (
         <div className="space-y-1">
             <button
                 onClick={() => setIsOpen(!isOpen)}
                 className={cn(
-                    "flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-muted-foreground transition-all hover:text-primary hover:bg-muted/50",
-                    isOpen && "text-primary font-medium"
+                    "flex w-full items-center justify-between rounded-md px-3 py-2 text-left transition-all outline-none ring-sidebar-ring focus-visible:ring-2",
+                    "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                    isOpen && "font-medium"
                 )}
             >
                 <div className="flex items-center gap-3">
@@ -240,7 +246,7 @@ function SidebarMenuItem({ item, pathname, role }: { item: MenuItem, pathname: s
             </button>
 
             {isOpen && (
-                <div className="ml-4 space-y-1 border-l pl-2">
+                <div className="ml-4 space-y-1 border-l border-sidebar-border pl-2">
                     {validSubmenu?.map((sub, idx) => {
                         const isSubActive = pathname === sub.href;
                         return (
@@ -248,8 +254,11 @@ function SidebarMenuItem({ item, pathname, role }: { item: MenuItem, pathname: s
                                 key={idx}
                                 href={sub.href || "#"}
                                 className={cn(
-                                    "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all hover:text-primary",
-                                    isSubActive ? "text-primary font-medium bg-muted/50" : "text-muted-foreground"
+                                    "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-all outline-none ring-sidebar-ring focus-visible:ring-2",
+                                    isSubActive
+                                        // STYLE SUBMENU AKTIF: Accent Background
+                                        ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                                        : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                                 )}
                             >
                                 {sub.title}

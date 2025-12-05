@@ -24,12 +24,19 @@ import {
     Trash2,
     Edit,
     Trash,
-    Clock
+    Clock,
+    Archive,
+    RotateCcw
 } from "lucide-react"
 import { toast } from "sonner"
 
-// Import Server Actions & Components Existing
-import { getTahunAjaran, softDeleteTahunAjaran, hardDeleteTahunAjaran } from "@/app/actions/tahun-ajaran"
+// Import Server Actions
+import {
+    getTahunAjaran,
+    softDeleteTahunAjaran,
+    hardDeleteTahunAjaran,
+    restoreTahunAjaran
+} from "@/app/actions/tahun-ajaran"
 import { TahunAjaranFormDialog } from "@/components/master/tahun-ajaran/form-dialog"
 import { TahunAjaran, ApiResponse } from "@/types/master"
 
@@ -45,20 +52,27 @@ export default function TahunAjaranPage() {
 
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [selectedData, setSelectedData] = useState<TahunAjaran | null>(null)
-    const [deleteId, setDeleteId] = useState<string | null>(null)
-    const [deleteType, setDeleteType] = useState<'soft' | 'hard'>('soft')
-    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+
+    // State untuk Dialog Aksi (Delete / Restore)
+    const [selectedId, setSelectedId] = useState<string | null>(null)
+    const [actionType, setActionType] = useState<'soft' | 'hard' | 'restore'>('soft')
+    const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false)
 
     const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "")
 
-    // URL Params
-    const page = Number(searchParams.get("page")) || 1
+    // State Mode Data: 1 = Aktif (Normal), 2 = Terhapus (Trash)
+    const [dataMode, setDataMode] = useState<number>(1)
+
+    // URL Params (Hanya dipakai jika mode = 1 / Aktif)
+    const urlPage = Number(searchParams.get("page")) || 1
     const search = searchParams.get("search") || ""
 
     // --- LOGIC FETCH DATA ---
     const fetchData = async () => {
         setLoading(true)
-        const res = await getTahunAjaran(page, search)
+        // Mengirim status (dataMode) sebagai parameter ke-3 ke backend
+        const res = await getTahunAjaran(urlPage, search, dataMode)
+
         if ('error' in res) {
             toast.error(res.error)
         } else {
@@ -69,9 +83,10 @@ export default function TahunAjaranPage() {
         setLoading(false)
     }
 
+    // Refresh saat page URL, search, atau mode data berubah
     useEffect(() => {
         fetchData()
-    }, [page, search])
+    }, [urlPage, search, dataMode])
 
     // --- HANDLERS ---
     const handleSearch = (term: string) => {
@@ -82,6 +97,7 @@ export default function TahunAjaranPage() {
         } else {
             params.delete("search")
         }
+        // Reset ke halaman 1 saat search berubah
         params.set("page", "1")
         router.replace(`${pathname}?${params.toString()}`)
     }
@@ -92,23 +108,46 @@ export default function TahunAjaranPage() {
         router.push(`${pathname}?${params.toString()}`)
     }
 
-    const confirmDelete = async () => {
-        if (!deleteId) return
+    const toggleDataMode = () => {
+        // Reset halaman ke 1 setiap kali ganti mode
+        const params = new URLSearchParams(searchParams)
+        params.set("page", "1")
+        router.replace(`${pathname}?${params.toString()}`)
+
+        if (dataMode === 1) {
+            setDataMode(2)
+            toast.info("Menampilkan data yang sudah dihapus")
+        } else {
+            setDataMode(1)
+        }
+    }
+
+    // --- CONFIRMATION ACTION HANDLER ---
+    const confirmAction = async () => {
+        if (!selectedId) return
 
         let res
-        if (deleteType === 'soft') {
-            res = await softDeleteTahunAjaran(deleteId)
-        } else {
-            res = await hardDeleteTahunAjaran(deleteId)
+        let successMessage = ""
+
+        // Eksekusi action berdasarkan tipe
+        if (actionType === 'soft') {
+            res = await softDeleteTahunAjaran(selectedId)
+            successMessage = "Data berhasil dihapus sementara"
+        } else if (actionType === 'hard') {
+            res = await hardDeleteTahunAjaran(selectedId)
+            successMessage = "Data berhasil dihapus permanen"
+        } else if (actionType === 'restore') {
+            res = await restoreTahunAjaran(selectedId)
+            successMessage = "Data berhasil dipulihkan"
         }
 
         if (res?.error) {
             toast.error(res.error)
         } else {
-            toast.success("Data berhasil dihapus")
-            fetchData()
+            toast.success(successMessage)
+            fetchData() // Refresh data
         }
-        setIsDeleteDialogOpen(false)
+        setIsConfirmDialogOpen(false)
     }
 
     // --- DIALOG HELPERS ---
@@ -122,10 +161,11 @@ export default function TahunAjaranPage() {
         setIsDialogOpen(true)
     }
 
-    const openDeleteDialog = (id: string, type: 'soft' | 'hard') => {
-        setDeleteId(id)
-        setDeleteType(type)
-        setIsDeleteDialogOpen(true)
+    // Helper generik untuk membuka dialog konfirmasi
+    const openConfirmDialog = (id: string, type: 'soft' | 'hard' | 'restore') => {
+        setSelectedId(id)
+        setActionType(type)
+        setIsConfirmDialogOpen(true)
     }
 
     const handleDialogChange = (open: boolean) => {
@@ -145,7 +185,6 @@ export default function TahunAjaranPage() {
         });
     }
 
-    // --- KOMPONEN CUSTOM UI (Status Badge) ---
     const StatusBadge = ({ active }: { active: string }) => {
         let styles = "";
         let icon = null;
@@ -172,85 +211,108 @@ export default function TahunAjaranPage() {
     return (
         <div className="min-h-screen w-full bg-background text-foreground transition-colors duration-300 font-sans p-4 lg:p-8">
 
-            {/* --- HEADER --- */}
+            {/* HEADER */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight mb-1">Master Tahun Ajaran</h1>
-                    <p className="text-muted-foreground">Kelola data tahun ajaran akademik.</p>
+                    <h1 className="text-3xl font-bold tracking-tight mb-1">
+                        {dataMode === 1 ? "Master Tahun Ajaran" : "Sampah Tahun Ajaran"}
+                    </h1>
+                    <p className="text-muted-foreground">
+                        {dataMode === 1
+                            ? "Kelola data tahun ajaran akademik sekolah."
+                            : "Kelola data tahun ajaran yang sudah dihapus sementara."}
+                    </p>
                 </div>
                 <div className="flex gap-2 w-full sm:w-auto">
-                    {/* <button className="hidden sm:flex items-center gap-2 px-4 py-2 bg-secondary text-secondary-foreground rounded-lg hover:opacity-90 transition-all text-sm font-medium border border-border">
-                        <Download className="w-4 h-4" />
+                    {/* Tombol Toggle Mode (Updated: Small Size) */}
+                    <button
+                        onClick={toggleDataMode}
+                        className={`flex items-center gap-2 h-8 px-3 rounded-md transition-all text-xs font-medium border border-border
+              ${dataMode === 1
+                                ? "bg-secondary text-secondary-foreground hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
+                                : "bg-secondary text-secondary-foreground hover:bg-primary/10 hover:text-primary"
+                            }`}
+                    >
+                        {dataMode === 1 ? (
+                            <>
+                                <Archive className="w-3.5 h-3.5" />
+                                Data Terhapus
+                            </>
+                        ) : (
+                            <>
+                                <RotateCcw className="w-3.5 h-3.5" />
+                                Data Utama
+                            </>
+                        )}
+                    </button>
+
+                    {/* Tombol Export (Updated: Small Size) */}
+                    {/* <button className="hidden sm:flex items-center gap-2 h-8 px-3 bg-secondary text-secondary-foreground rounded-md hover:opacity-90 transition-all text-xs font-medium border border-border">
+                        <Download className="w-3.5 h-3.5" />
                         Export
                     </button> */}
-                    <button
-                        onClick={openCreateDialog}
-                        className="flex-1 sm:flex-none items-center justify-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 shadow-lg shadow-primary/20 transition-all text-sm font-medium flex"
-                    >
-                        <Plus className="w-4 h-4" />
-                        Tambah Baru
-                    </button>
+
+                    {/* Tombol Tambah (Updated: Small Size) */}
+                    {dataMode === 1 && (
+                        <button
+                            onClick={openCreateDialog}
+                            className="flex-1 sm:flex-none items-center justify-center gap-2 h-8 px-3 bg-primary text-primary-foreground rounded-md hover:opacity-90 shadow-lg shadow-primary/20 transition-all text-xs font-medium flex"
+                        >
+                            <Plus className="w-3.5 h-3.5" />
+                            Tambah Baru
+                        </button>
+                    )}
                 </div>
             </div>
 
-            {/* --- MAIN CARD --- */}
+            {/* MAIN CARD */}
             <div className="rounded-xl border border-border bg-card text-card-foreground shadow-sm overflow-hidden">
 
-                {/* --- TOOLBAR --- */}
+                {/* TOOLBAR */}
                 <div className="p-4 border-b border-border flex flex-col sm:flex-row gap-4 justify-between items-center bg-muted/20">
                     <div className="relative w-full sm:w-72">
-                        <div className="absolute left-3 top-2.5 text-muted-foreground pointer-events-none">
-                            <Search className="w-4 h-4" />
+                        <div className="absolute left-3 top-2 text-muted-foreground pointer-events-none">
+                            <Search className="w-3.5 h-3.5" />
                         </div>
+                        {/* Input Search (Updated: Small Size h-8) */}
                         <input
                             type="text"
                             placeholder="Cari tahun ajaran..."
                             value={searchTerm}
                             onChange={(e) => handleSearch(e.target.value)}
-                            className="w-full h-9 rounded-md border border-input bg-background !pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all"
+                            className="w-full h-8 rounded-md border border-input bg-background !pl-9 pr-3 text-xs focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all"
                         />
                     </div>
                     <div className="flex gap-2 w-full sm:w-auto">
-                        {/* <button className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 py-2 bg-background border border-input rounded-md text-sm font-medium hover:bg-accent text-muted-foreground hover:text-foreground transition-colors">
+                        {/* Tombol Filter (Updated: Small Size h-8) */}
+                        {/* <button className="flex-1 sm:flex-none flex items-center justify-center gap-2 h-8 px-3 bg-background border border-input rounded-md text-xs font-medium hover:bg-accent text-muted-foreground hover:text-foreground transition-colors">
                             <Filter className="w-3.5 h-3.5" />
                             Filter
-                        </button>
-                        <button className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 py-2 bg-background border border-input rounded-md text-sm font-medium hover:bg-accent text-muted-foreground hover:text-foreground transition-colors">
+                        </button> */}
+                        {/* Tombol View (Updated: Small Size h-8) */}
+                        {/* <button className="flex-1 sm:flex-none flex items-center justify-center gap-2 h-8 px-3 bg-background border border-input rounded-md text-xs font-medium hover:bg-accent text-muted-foreground hover:text-foreground transition-colors">
                             <MoreVertical className="w-3.5 h-3.5" />
                             View
                         </button> */}
                     </div>
                 </div>
 
-                {/* --- TABLE --- */}
+                {/* TABLE */}
                 <div className="relative w-full overflow-auto">
                     <table className="w-full caption-bottom text-sm text-left">
                         <thead className="[&_tr]:border-b border-border">
                             <tr className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
-                                {/* 1. Header Kolom Nomor */}
                                 <th className="shadcn-table-header w-12 text-center">No</th>
-
-                                {/* 2. Header Kolom Aksi (Dipindah kesini) */}
                                 <th className="shadcn-table-header text-center w-24">Aksi</th>
-
-                                {/* 3. Header Tahun Ajaran */}
                                 <th className="shadcn-table-header cursor-pointer group hover:text-foreground transition-colors">
                                     <div className="flex items-center gap-1">
                                         Tahun Ajaran
                                         <ArrowUpDown className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                                     </div>
                                 </th>
-
-                                {/* 4. Header Periode */}
                                 <th className="shadcn-table-header">Periode</th>
-
-                                {/* 5. Header Status */}
                                 <th className="shadcn-table-header">Status</th>
-
-                                {/* 6. Header Dibuat Oleh */}
                                 <th className="shadcn-table-header">Dibuat Oleh</th>
-
-                                {/* 7. Header Diupdate Oleh */}
                                 <th className="shadcn-table-header">Diupdate Oleh</th>
                             </tr>
                         </thead>
@@ -264,7 +326,7 @@ export default function TahunAjaranPage() {
                             ) : data.length === 0 ? (
                                 <tr>
                                     <td colSpan={7} className="h-24 text-center text-muted-foreground">
-                                        Tidak ada data ditemukan.
+                                        Tidak ada data {dataMode === 2 ? 'terhapus' : ''} ditemukan.
                                     </td>
                                 </tr>
                             ) : (
@@ -273,47 +335,71 @@ export default function TahunAjaranPage() {
                                         key={item.id_tahun_ajaran}
                                         className="border-b border-border transition-colors hover:bg-muted/30 data-[state=selected]:bg-muted group"
                                     >
-                                        {/* 1. Sel Nomor */}
                                         <td className="shadcn-table-cell text-center font-mono text-xs text-muted-foreground">
-                                            {(meta?.from ?? 1) + index}
+                                            {dataMode === 1 ? (meta?.from ?? 1) + index : index + 1}
                                         </td>
 
-                                        {/* 2. Sel Aksi (Dipindah kesini) */}
                                         <td className="shadcn-table-cell text-center">
                                             <div className="flex justify-center gap-2">
-                                                <button
-                                                    onClick={() => openEditDialog(item)}
-                                                    className="p-1.5 hover:bg-secondary rounded-md text-muted-foreground hover:text-foreground transition-colors"
-                                                    title="Edit"
-                                                >
-                                                    <Edit className="w-4 h-4" />
-                                                </button>
-
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <button className="p-1.5 hover:bg-secondary rounded-md text-muted-foreground hover:text-foreground transition-colors">
-                                                            <Trash2 className="w-4 h-4" />
+                                                {/* MODE AKTIF (1) */}
+                                                {dataMode === 1 && (
+                                                    <>
+                                                        <button
+                                                            onClick={() => openEditDialog(item)}
+                                                            className="p-1.5 hover:bg-secondary rounded-md text-muted-foreground hover:text-foreground transition-colors"
+                                                            title="Edit"
+                                                        >
+                                                            <Edit className="w-4 h-4" />
                                                         </button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="start">
-                                                        <DropdownMenuItem
-                                                            onClick={() => openDeleteDialog(item.id_tahun_ajaran, 'soft')}
-                                                            className="text-red-600 focus:text-red-600 cursor-pointer"
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild>
+                                                                <button className="p-1.5 hover:bg-secondary rounded-md text-muted-foreground hover:text-foreground transition-colors">
+                                                                    <Trash2 className="w-4 h-4" />
+                                                                </button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="start">
+                                                                <DropdownMenuItem
+                                                                    onClick={() => openConfirmDialog(item.id_tahun_ajaran, 'soft')}
+                                                                    className="text-red-600 focus:text-red-600 cursor-pointer"
+                                                                >
+                                                                    <Trash2 className="mr-2 h-4 w-4" /> Hapus
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem
+                                                                    onClick={() => openConfirmDialog(item.id_tahun_ajaran, 'hard')}
+                                                                    className="text-red-900 focus:text-red-900 cursor-pointer"
+                                                                >
+                                                                    <Trash className="mr-2 h-4 w-4" /> Hapus Permanen
+                                                                </DropdownMenuItem>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                    </>
+                                                )}
+
+                                                {/* MODE TERHAPUS (2): Restore & Hard Delete */}
+                                                {dataMode === 2 && (
+                                                    <>
+                                                        {/* Tombol Restore */}
+                                                        <button
+                                                            onClick={() => openConfirmDialog(item.id_tahun_ajaran, 'restore')}
+                                                            className="p-1.5 hover:bg-primary/10 rounded-md text-primary hover:text-primary transition-colors"
+                                                            title="Kembalikan Data"
                                                         >
-                                                            <Trash2 className="mr-2 h-4 w-4" /> Hapus
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem
-                                                            onClick={() => openDeleteDialog(item.id_tahun_ajaran, 'hard')}
-                                                            className="text-red-900 focus:text-red-900 cursor-pointer"
+                                                            <RotateCcw className="w-4 h-4" />
+                                                        </button>
+
+                                                        {/* Tombol Hard Delete */}
+                                                        <button
+                                                            onClick={() => openConfirmDialog(item.id_tahun_ajaran, 'hard')}
+                                                            className="p-1.5 hover:bg-destructive/10 rounded-md text-destructive hover:text-destructive transition-colors"
+                                                            title="Hapus Permanen"
                                                         >
-                                                            <Trash className="mr-2 h-4 w-4" /> Hapus Permanen
-                                                        </DropdownMenuItem>
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
+                                                            <Trash className="w-4 h-4" />
+                                                        </button>
+                                                    </>
+                                                )}
                                             </div>
                                         </td>
 
-                                        {/* 3. Sel Tahun Ajaran */}
                                         <td className="shadcn-table-cell font-medium">
                                             <div className="flex items-center gap-3">
                                                 <div className="p-2 rounded-md bg-primary/10 text-primary">
@@ -323,17 +409,14 @@ export default function TahunAjaranPage() {
                                             </div>
                                         </td>
 
-                                        {/* 4. Sel Periode */}
                                         <td className="shadcn-table-cell text-muted-foreground font-mono text-xs">
                                             {new Date(item.periode_awal).toLocaleDateString("id-ID")} - {new Date(item.periode_akhir).toLocaleDateString("id-ID")}
                                         </td>
 
-                                        {/* 5. Sel Status */}
                                         <td className="shadcn-table-cell">
                                             <StatusBadge active={item.sts_aktif} />
                                         </td>
 
-                                        {/* 6. Sel Dibuat Oleh (User + Tanggal) */}
                                         <td className="shadcn-table-cell">
                                             <div className="flex flex-col gap-1">
                                                 <div className="flex items-center gap-2">
@@ -349,7 +432,6 @@ export default function TahunAjaranPage() {
                                             </div>
                                         </td>
 
-                                        {/* 7. Sel Diupdate Oleh (User + Tanggal) */}
                                         <td className="shadcn-table-cell">
                                             {item.updated_by ? (
                                                 <div className="flex flex-col gap-1">
@@ -376,8 +458,8 @@ export default function TahunAjaranPage() {
                     </table>
                 </div>
 
-                {/* --- PAGINATION --- */}
-                {meta && (
+                {/* PAGINATION */}
+                {meta && dataMode === 1 && (
                     <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t border-border bg-muted/20 gap-4 sm:gap-0">
                         <div className="text-xs text-muted-foreground">
                             Menampilkan <span className="font-medium text-foreground">{meta.from || 0}</span> sampai <span className="font-medium text-foreground">{meta.to || 0}</span> dari <span className="font-medium text-foreground">{meta.total}</span> data
@@ -391,7 +473,6 @@ export default function TahunAjaranPage() {
                                 <ChevronLeft className="w-4 h-4" />
                             </button>
 
-                            {/* Pagination Numbers */}
                             <div className="flex items-center gap-1">
                                 <button
                                     className="w-8 h-8 rounded-md text-xs font-medium bg-primary text-primary-foreground shadow-sm flex items-center justify-center"
@@ -413,27 +494,40 @@ export default function TahunAjaranPage() {
 
             </div>
 
-            {/* --- MODAL COMPONENTS (Tetap menggunakan komponen terpisah untuk logic) --- */}
+            {/* MODAL COMPONENTS */}
             <TahunAjaranFormDialog
                 open={isDialogOpen}
                 onOpenChange={handleDialogChange}
                 dataToEdit={selectedData}
             />
 
-            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+            {/* Dialog Konfirmasi (Delete & Restore) */}
+            <AlertDialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Apakah Anda yakin?</AlertDialogTitle>
+                        <AlertDialogTitle>
+                            {actionType === 'restore'
+                                ? "Kembalikan Data?"
+                                : "Apakah Anda yakin?"}
+                        </AlertDialogTitle>
                         <AlertDialogDescription>
-                            {deleteType === 'soft'
-                                ? "Data ini akan dihapus sementara (soft delete)."
-                                : "Tindakan ini tidak bisa dibatalkan. Data akan dihapus secara permanen dari database."}
+                            {actionType === 'soft' && "Data ini akan dihapus sementara dan masuk ke tong sampah."}
+                            {actionType === 'hard' && "Tindakan ini tidak bisa dibatalkan. Data akan dihapus secara permanen dari database."}
+                            {actionType === 'restore' && "Data akan dikembalikan ke daftar aktif."}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>Batal</AlertDialogCancel>
-                        <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
-                            {deleteType === 'soft' ? 'Hapus' : 'Hapus Permanen'}
+                        <AlertDialogAction
+                            onClick={confirmAction}
+                            className={actionType === 'restore'
+                                ? "bg-primary hover:bg-primary/90"
+                                : "bg-red-600 hover:bg-red-700"
+                            }
+                        >
+                            {actionType === 'soft' && 'Hapus'}
+                            {actionType === 'hard' && 'Hapus Permanen'}
+                            {actionType === 'restore' && 'Pulihkan'}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
