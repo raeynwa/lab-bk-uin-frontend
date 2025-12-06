@@ -3,7 +3,7 @@ export interface TahunAjaran {
     tahun_ajaran: string
     periode_awal: string
     periode_akhir: string
-    sts_aktif: string // "1" | "2"
+    sts_aktif: string
     sts_hapus: string
     created_by?: string
     updated_by?: string
@@ -11,7 +11,6 @@ export interface TahunAjaran {
     updated_at?: string
 }
 
-// Interface Baru untuk Semester
 export interface Semester {
     id_semester: string
     id_tahun_ajaran_fr: string
@@ -24,9 +23,24 @@ export interface Semester {
     updated_by?: string
     created_at?: string
     updated_at?: string
-    // Field tambahan dari join/relation dengan tahun ajaran
     id_tahun_ajaran?: string
     tahun_ajaran?: string
+}
+
+// UPDATE: Sesuaikan field dengan Backend Laravel
+export interface Mahasiswa {
+    id_mahasiswa: string
+    nim: string
+    nama_mahasiswa: string // Sebelumnya nama_lengkap
+    email?: string
+    phone_number?: string  // Sebelumnya no_hp
+    jenis_kelamin?: string // "L" | "P" (Sebelumnya jk)
+    sts_aktif: string
+    sts_hapus: string
+    created_by?: string
+    updated_by?: string
+    created_at?: string
+    updated_at?: string
 }
 
 export interface ApiResponse<T> {
